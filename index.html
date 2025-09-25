@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+  <!-- <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"> -->
+
+  <!-- <meta http-equiv="x-ua-compatible" content="ie=edge"> -->
+
+  <title>HoloScene</title>
+
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- mirror: F0%9F%AA%9E&lt -->
+
+  <link rel="stylesheet" type="text/css" href="./src/slick.css">
+  <link rel="stylesheet" type="text/css" href="./src/slick-theme.css">
+  <link rel="stylesheet" href="./src/bulma.min.css">
+  <link rel="stylesheet" href="./src/bulma-slider.min.css">
+  <link rel="stylesheet" href="./src/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./src/bootstrap.min.css">
+  <link rel="stylesheet" href="./src/font-awesome.min.css">
+  <link rel="stylesheet" href="./src/codemirror.min.css">
+  <link rel="stylesheet" href="./src/app.css">
+  <link rel="stylesheet" href="./src/index.css">
+  <link rel="stylesheet" href="./src/select.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="resources/glide.core.min.css">
+  <link rel="stylesheet" href="resources/glide.theme.min.css">
+  <link rel="stylesheet" href="resources/glide-custom.css">
+  <script src="resources/handlers.js"></script>
+  <script src="./src/jquery.min.js"></script>
+  <script src="./src/bootstrap.min.js"></script>
+  <script src="./src/codemirror.min.js"></script>
+  <script src="./src/clipboard.min.js"></script>
+  <script src="./src/video_comparison.js"></script>
+  <script src="./src/select.js"></script>
+  <script src="./src/bulma-slider.min.js"></script>
+  <script src="./src/bulma-carousel.min.js"></script>
+  <!-- <script src="./src/app.js"></script> -->
+  <script src="./src/index.js"></script>
+  <!-- <script src="./src/slick.js"></script> -->
+  
+  <script src="resources/glide.min.js"></script>
+  <script>
+  window.onload = function() {
+    // Initialize carousels with error handling
+    try {
+      const dynamicCarousel = document.getElementById("dynamic-carousel");
+      if (dynamicCarousel) {
+        new Glide("#dynamic-carousel", {
+          type: "carousel",
+          perView: 1.68,
+          focusAt: "center",
+          autoplay: 13000,
+          hoverpause: true
+        }).mount();
+      }
+    } catch (e) {
+      // Dynamic carousel initialization failed
+    }
+    
+    try {
+      const realtimeCarousel = document.getElementById("realtime-carousel");
+      if (realtimeCarousel) {
+        new Glide("#realtime-carousel", {
+          type: "carousel",
+          perView: 2.05,
+          focusAt: "center",
+          autoplay: 3000,
+          hoverpause: true
+        }).mount();
+      }
+    } catch (e) {
+      // Realtime carousel initialization failed
+    }
+    
+    // Wait a bit more for DOM to be fully ready, then initialize video sync
+    setTimeout(() => {
+      initializeSynchronizedVideos();
+    }, 2000);
+  };
+
+  function initializeSynchronizedVideos() {
+    // Find all video sections using specific IDs
+    const videoSectionIds = ['video-section-1', 'video-section-2', 'video-section-3', 'video-section-4'];
+    let sectionsFound = 0;
+    
+    videoSectionIds.forEach((sectionId, sectionIndex) => {
+      const section = document.getElementById(sectionId);
+      
+      if (section) {
+        const videos = section.querySelectorAll('video');
+        
+        if (videos.length > 0) {
+          setupSynchronizedPlayback(videos, sectionIndex, sectionId);
+          sectionsFound++;
+        }
+      }
+    });
+    
+    // Fallback: If sections not found by ID, try direct video selection
+    if (sectionsFound === 0) {
+      // Find all videos that have autoplay and are not in carousels
+      const allVideos = document.querySelectorAll('video[autoplay]:not(.game)');
+      
+      if (allVideos.length > 0) {
+        // Group videos by their parent containers
+        const videoGroups = new Map();
+        
+        allVideos.forEach((video, index) => {
+          // Find the closest container div
+          const container = video.closest('.col-md-12');
+          const containerId = container ? container.innerHTML.substring(0, 50) : `group-${Math.floor(index / 6)}`;
+          
+          if (!videoGroups.has(containerId)) {
+            videoGroups.set(containerId, []);
+          }
+          videoGroups.get(containerId).push(video);
+        });
+        
+        // Set up playback for each group
+        let groupIndex = 0;
+        videoGroups.forEach((videos, groupId) => {
+          setupSynchronizedPlayback(videos, groupIndex, `direct-group-${groupIndex}`);
+          groupIndex++;
+        });
+      }
+    }
+    
+    // Final fallback - find ANY videos with autoplay attribute
+    setTimeout(() => {
+      const fallbackVideos = document.querySelectorAll('video[autoplay]');
+      
+      if (fallbackVideos.length > 0 && sectionsFound === 0) {
+        setupSynchronizedPlayback(Array.from(fallbackVideos), 0, 'fallback-all-videos');
+      }
+    }, 1000);
+  }
+
+  function setupSynchronizedPlayback(videos, sectionIndex, sectionId) {
+    // Remove autoplay attribute and set up manual control
+    videos.forEach(video => {
+      video.removeAttribute('autoplay');
+      video.currentTime = 0;
+      video.muted = true; // Ensure videos are muted for autoplay
+      video.loop = false; // Disable loop since we're controlling it manually
+    });
+
+    // Function to play all videos simultaneously
+    function playAllVideos() {
+      videos.forEach(video => {
+        video.currentTime = 0;
+        video.play().catch(e => {
+          // Video play failed silently
+        });
+      });
+    }
+
+    // Ensure videos are ready to play
+    videos.forEach(video => {
+      video.addEventListener('loadeddata', function() {
+        if (this.readyState >= 2) {
+          this.currentTime = 0;
+        }
+      });
+    });
+
+    // Start playing all videos initially with a delay to ensure they're loaded
+    setTimeout(() => {
+      playAllVideos();
+    }, 2000);
+
+    // Set up timer to replay all videos every 5 seconds
+    setInterval(() => {
+      playAllVideos();
+    }, 5000);
+
+    // Handle visibility change to restart videos when page becomes visible
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        setTimeout(() => {
+          playAllVideos();
+        }, 500);
+      }
+    });
+  }
+  </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-RZ6PES7EKD"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-RZ6PES7EKD');
+  </script>
+</head>
+
+<body>
+  <div class="container" id="header" style="text-align: center; margin: auto;">
+    <div class="row" id="title-row" style="max-width: 100%; margin: 0 auto; display: inline-block">
+      <h1 class="col-md-12 text-center" id="title">
+        <b>HoloScene</b>: Simulation-Ready Interactive 3D Worlds <br>from a Single Video<br>
+      </h1>
+    </div>
+  </div>
+  <script>
+  </script>
+  <div class="container" id="main">
+    <div class="row">
+      <div class="col-sm-10 col-sm-offset-1 text-center">
+        <ul class="list-inline">
+          <li> <a href="https://xiahongchi.github.io/">Hongchi Xia<sup>1</sup></a> </li>
+          <li> <a href="https://chih-hao-lin.github.io/">Chih-Hao Lin<sup>1</sup></a>  </li>
+          <li> <a href="https://haoyuhsu.github.io/">Hao-Yu Hsu<sup>1</sup></a> </li>
+          <li> <a href="https://www.linkedin.com/in/quentinleboutet/?originalSubdomain=de">Quentin Leboutet<sup>2</sup></a> </li>
+          <li> <a href="https://sites.google.com/view/katelyn-gao/home">Katelyn Gao<sup>2</sup></a> </li>
+          <li> <a href="https://www.linkedin.com/in/michael-paulitsch/?originalSubdomain=de">Michael Paulitsch<sup>2</sup></a> </li>
+          <br>
+          <li> <a href="https://scholar.google.com/citations?user=QGlp5ywAAAAJ&hl=en">Benjamin Ummenhofer<sup>2</sup></a> </li>
+          <li> <a href="https://shenlong.web.illinois.edu/">Shenlong Wang<sup>1</sup></a> </li>
+        </ul>
+        <ul class="list-inline">
+          <li> <sup>1</sup>University of Illinois at Urbana-Champaign </li>
+          <li> <sup>2</sup>Intel </li>
+        </ul>
+        <div style="font-size: 1.2em; margin-top: 15px;">NeurIPS 2025</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-10 col-sm-offset-1 text-center">
+        <img src="./src/images/teaser.png" class="img-responsive" alt="overview" width="100%"
+            style="max-height: 450px;margin:auto;">
+      </div>
+    </div>
+
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+            Abstract 
+        </h3>
+        <div class="text-justify">
+          Digitizing the physical world into accurate simulation-ready virtual environments offers significant opportunities in a variety of fields such as augmented and virtual reality, gaming, and robotics. However, current 3D reconstruction and scene-understanding methods commonly fall short in one or more critical aspects, such as geometry completeness, object interactivity, physical plausibility, photorealistic rendering, or realistic physical properties for reliable dynamic simulation. To address these limitations, we introduce HoloScene, a novel interactive 3D reconstruction framework that simultaneously achieves these requirements. HoloScene leverages a comprehensive interactive scene-graph representation, encoding object geometry, appearance, and physical properties alongside hierarchical and inter-object relationships. Reconstruction is formulated as an energy-based optimization problem, integrating observational data, physical constraints, and generative priors into a unified, coherent objective. Optimization is efficiently performed via a hybrid approach combining sampling-based exploration with gradient-based refinement. The resulting digital twins exhibit complete and precise geometry, physical stability, and realistic rendering from novel viewpoints. Evaluations conducted on multiple benchmark datasets demonstrate superior performance, while practical use-cases in interactive gaming and real-time digital-twin manipulation illustrate HoloScene's broad applicability and effectiveness.
+        </div>
+
+      </div>
+    </div>
+
+
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Interactive 3D Editing
+        </h3>
+        <div class="text-justify">
+          In our simulation environment, we could also achieve high-quality interactive 3D editing by moving the object Gaussians 
+          with its underlying physical mesh geometry. Here we demonstrate this by changing the location and orientation of the interactable chair.
+        </div>
+      </div>
+    </div>
+
+    <!-- Video section -->
+    <div class="video-container  text-center" style="margin-top: 20px;">
+      <video controls autoplay muted loop style="max-width: 800px; width: 100%; height: auto;">
+          <source src="src/videos/int/editing/demo.mp4" type="video/mp4">
+          Your browser does not support the video tag.
+      </video>
+    </div>
+
+
+
+
+
+    
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Dynamic Visual Effects
+        </h3>
+        <div class="text-justify">
+          To enhance immersion, we augment the scene with dynamic
+          visual effects, including rigid body simulations,
+          character animations, and particle effects. We
+          adopt visual effects from AutoVFX to
+          overlay virtual content and shadows onto the
+          image. As we can see from the following videos, we produce effects that
+          blend naturally with the scene.
+        </div>
+
+        <!-- Three videos in a row -->
+        <div class="row text-center" style="margin-top: 20px;">
+          <div class="col-xs-4">
+              <video controls autoplay muted loop style="width: 100%; height: auto;">
+                  <source src="src/videos/int/vfx/blended_0.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+              <p style="margin-top: 10px; font-style: italic;">Setting fire on the chair</p>
+          </div>
+          <div class="col-xs-4">
+              <video controls autoplay muted loop style="width: 100%; height: auto;">
+                  <source src="src/videos/int/vfx/blended_1.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+              <p style="margin-top: 10px; font-style: italic;">Dropping box and balls</p>
+          </div>
+          <div class="col-xs-4">
+              <video controls autoplay muted loop style="width: 100%; height: auto;">
+                  <source src="src/videos/int/vfx/blended_2.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+              <p style="margin-top: 10px; font-style: italic;">Insert animated characters</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Immersive Experience Recording
+        </h3>
+        <div class="text-justify">
+          We show our interactable reconstructed 3D objects with immersive experience recording. 
+          Given a static RGB video of a person manipulating an object, we can recover the object's 6D pose and resimulate its motion in a virtual 3D scene.
+        </div>
+
+        <!-- insert two videos in a row here -->
+         <!-- Two videos in a row -->
+        <div class="row">
+          <div class="col-md-6 col-sm-6">
+              <div class="video-container">
+                <video controls autoplay muted loop style="width: 100%; height: auto;">
+                  <source src="src/videos/int/immerse/obj1.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+          </div>
+          <div class="col-md-6 col-sm-6">
+              <div class="video-container">
+                <video controls autoplay muted loop style="width: 100%; height: auto;">
+                  <source src="src/videos/int/immerse/obj2.mp4" type="video/mp4">
+                  Your browser does not support the video tag.
+                </video>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Physical Simulation
+        </h3>
+        <div class="text-justify">
+          We compare geometry layouts and
+          appearance within the physical simulation. HoloScene's complete, non-interpenetrating geometry remains stable in physics
+          simulators, unlike baseline methods. Our Gaussian on mesh delivers high-quality, real-time rendering
+          throughout the simulation process.
+        </div>
+      </div>
+    </div>
+
+
+    <div class="row">
+
+      <br>
+      <div class="col-md-12 col-md-offset-1">
+        <div class="text-justify">
+        Scenes from Scannet++ dataset:
+        <br>
+        <!-- <b>Replay the simulation by refreshing the page.</b>  -->
+        </div>
+      </div>
+
+      <div class="col-md-12 col-md-offset-1">
+        <!-- Two rows of videos layout -->
+        <div id="video-section-1" style="margin-top: 20px; padding-left: 0; padding-right: 0;">
+          <!-- First row: 1 image + 4 videos -->
+          <div class="row text-center" style="padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <img src="src/videos/physim/67d/DSC09303.JPG" alt="Description" style="width: 100%; height: auto;">
+                  <p style="margin-top: 10px; font-style: italic;">Ref Image</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/objectsdf/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">ObjectSDF</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/phyrecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">PhyRecon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/dprecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/ours/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+          
+          <!-- Second row: 2 videos aligned with rightmost videos from first row -->
+          <div class="row text-center" style="margin-top: 15px;  padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2 col-xs-offset-6" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/dprecon/trace_video_t_shade.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/67d/ours/trace_video_t_gs.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-12 col-md-offset-1">
+        <!-- Two rows of videos layout -->
+        <div id="video-section-2" style="margin-top: 20px; padding-left: 0; padding-right: 0;">
+          <!-- First row: 1 image + 4 videos -->
+          <div class="row text-center" style="padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <img src="src/videos/physim/783/DSC04096.JPG" alt="Description" style="width: 100%; height: auto;">
+                  <p style="margin-top: 10px; font-style: italic;">Ref Image</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/objectsdf/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">ObjectSDF</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/phyrecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">PhyRecon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/dprecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/ours/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+          
+          <!-- Second row: 2 videos aligned with rightmost videos from first row -->
+          <div class="row text-center" style="margin-top: 15px;  padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2 col-xs-offset-6" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/dprecon/trace_video_t_shade.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/783/ours/trace_video_t_gs.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <br>
+      <div class="col-md-12 col-md-offset-1">
+        <div class="text-justify">
+        Scene from Replica dataset:
+        <br>
+        <!-- <b>Replay the simulation by refreshing the page.</b>  -->
+        </div>
+      </div>
+
+      <div class="col-md-12 col-md-offset-1">
+        <!-- Two rows of videos layout -->
+        <div id="video-section-3" style="margin-top: 20px; padding-left: 0; padding-right: 0;">
+          <!-- First row: 1 image + 4 videos -->
+          <div class="row text-center" style="padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <img src="src/videos/physim/room2/frame000201.jpg" alt="Description" style="width: 100%; height: auto;">
+                  <p style="margin-top: 10px; font-style: italic;">Ref Image</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/objectsdf/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">ObjectSDF</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/phyrecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">PhyRecon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/dprecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/ours/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+          
+          <!-- Second row: 2 videos aligned with rightmost videos from first row -->
+          <div class="row text-center" style="margin-top: 15px;  padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2 col-xs-offset-6" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/dprecon/trace_video_t_shade.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/room2/ours/trace_video_t_gs.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <br>
+      <div class="col-md-12 col-md-offset-1">
+        <div class="text-justify">
+        Scene from iGibson dataset: DP-Recon fails to reconstruct the complete
+        background mesh, leading to object falling in the figure.
+        <br>
+        <!-- <b>Replay the simulation by refreshing the page.</b>  -->
+        </div>
+      </div>
+
+      <div class="col-md-12 col-md-offset-1">
+        <!-- Two rows of videos layout -->
+        <div id="video-section-4" style="margin-top: 20px; padding-left: 0; padding-right: 0;">
+          <!-- First row: 1 image + 4 videos -->
+          <div class="row text-center" style="padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <img src="src/videos/physim/bw1/00142.png" alt="Description" style="width: 100%; height: auto;">
+                  <p style="margin-top: 10px; font-style: italic;">Ref Image</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/objectsdf/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">ObjectSDF</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/phyrecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">PhyRecon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/dprecon/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/ours/trace_video_t.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+          
+          <!-- Second row: 2 videos aligned with rightmost videos from first row -->
+          <div class="row text-center" style="margin-top: 15px;  padding-left: 0; padding-right: 0;">
+              <div class="col-xs-2 col-xs-offset-6" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/dprecon/trace_video_t_shade.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">DP-Recon</p>
+              </div>
+              <div class="col-xs-2" style="padding-left: 1px; padding-right: 1px;">
+                  <video  autoplay muted  style="width: 100%; height: auto;padding-left: 0; padding-right: 0;">
+                      <source src="src/videos/physim/bw1/ours/trace_video_t_gs.mp4" type="video/mp4">
+                      Your browser does not support the video tag.
+                  </video>
+                  <p style="margin-top: 10px; font-style: italic;">Ours</p>
+              </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+    
+
+    
+
+    
+
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Real-Time Interactive Game
+        </h3>
+        <div class="text-justify">
+          We demonstrate our interactive game in Unreal Engine. 
+          we build a third-person game with the reconstructed texture meshes. 
+          The objects could be physically rearranged in the game world, 
+          and the game agent could also interact with the scene through realistic physics.
+        </div>
+      </div>
+    </div>
+
+    <div class="glide" id="dynamic-carousel">
+      <div class="glide__track" data-glide-el="track">
+        <ul class="glide__slides">
+          <li class="glide__slide">
+            <video class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game1_1.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game1_2.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game1_3.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game2_1.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video  class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game2_2.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video  class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game2_3.mp4" type="video/mp4"/>
+            </video>
+          </li>
+          <li class="glide__slide">
+            <video  class="game" controls muted loop autoplay>
+              <source src="src/videos/int/game/game2_4.mp4" type="video/mp4"/>
+            </video>
+          </li>
+        </ul>
+      </div>
+
+
+      <div class="glide__arrows" data-glide-el="controls">
+        <span class="glide__arrow glide__arrow--left" data-glide-dir="<"><img src="resources/arrow-left-circle-fill.svg"/></span>
+        <span class="glide__arrow glide__arrow--right" data-glide-dir=">"><img src="resources/arrow-right-circle-fill.svg"/></span>
+      </div>
+      <div class="glide__bullets" data-glide-el="controls[nav]">
+        <span class="glide__bullet" data-glide-dir="=0"></span>
+        <span class="glide__bullet" data-glide-dir="=1"></span>
+        <span class="glide__bullet" data-glide-dir="=2"></span>
+        <span class="glide__bullet" data-glide-dir="=3"></span>
+        <span class="glide__bullet" data-glide-dir="=4"></span>
+        <span class="glide__bullet" data-glide-dir="=5"></span>
+        <span class="glide__bullet" data-glide-dir="=6"></span>
+      </div>
+    </div>
+
+
+
+    
+
+
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+          <br>
+          <br>
+          <br>
+          <br>
+          <br>
+          <br>
+
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>
