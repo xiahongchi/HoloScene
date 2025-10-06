@@ -1,0 +1,14 @@
+# Ignore hashencoder build directory
+hashencoder/build/
+**___pycache___**
+__pycache__/
+.cache/
+ckpts/
+exps/
+wandb/
+weights/
+omnidata_dpt_normal_v2.ckpt
+lama/big-lama/models/best.ckpt
+lama/big-lama.zip
+data_dir
+debug/
