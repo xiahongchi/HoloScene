@@ -246,6 +246,27 @@
       </div>
     </div>
 
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Framework Overview
+        </h3>
+        <div class="text-justify">
+          Given multiple posed images as well as some visual cues (instance masks, monocular geometry priors), we first employ a gradient-based optimization as the initialization. 
+    Then we adopt a generative sampling and tree search strategy along the topology of the scene graph to obtain the complete geometry with physical plausibility.
+    Finally, the final fine-tuning over the scene further enhances the realism of the reconstructed scene.
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-sm-10 col-sm-offset-1 text-center">
+        <img src="./src/images/method.png" class="img-responsive" alt="overview" 
+            style="max-height: 450px;margin:auto;">
+      </div>
+    </div>
+
+
     <!-- Result visualization -->
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
@@ -732,6 +753,40 @@
       </video>
     </div>
 
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          3D Printing of Reconstructed Scene
+        </h3>
+        <div class="text-justify">
+          In order to demonstrate the geometry realism and physical plausibility of our reconstructed scene, we select our UIUC Siebel Game Room and print the reconstructed scene.
+          Here we show an overview image, video, and interactions of human-3d printed scene. All objects are movable, and we selected some objects to show the interactions. 
+          (Thanks to the printout by <a href="https://www.linkedin.com/in/hnyu/">Sydney Yu</a>.)
+
+        <!-- Three media items in a row -->
+        <div class="row text-center" style="margin-top: 20px;">
+          <div class="col-xs-4">
+              <img src="src/images/3dprint/3dprint_0.jpg" style="width: 100%; height: auto; display: block;" alt="3D printed scene overview" id="print-ref-img">
+          </div>
+          <div class="col-xs-4">
+              <video controls autoplay muted loop style="width: 100%; height: 100%; object-fit: cover; aspect-ratio: 3/4;">
+                  <source src="src/images/3dprint/3dprint_1.MOV" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+          </div>
+          <div class="col-xs-4">
+              <video controls autoplay muted loop style="width: 100%; height: 100%; object-fit: cover; aspect-ratio: 3/4;">
+                  <source src="src/images/3dprint/3dprint_2.MOV" type="video/mp4">
+                  Your browser does not support the video tag.
+              </video>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Images and Video section -->
+    
+
 
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
@@ -1163,22 +1218,27 @@
       </div>
     </div>
 
-
-
-    
-
-
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
-          <br>
-          <br>
-          <br>
-          <br>
-          <br>
-          <br>
-
+        <h3>
+          Bibtex
+        </h3>
+        <div class="bibtexsection">
+<!-- @misc{xia2025drawerdigitalreconstructionarticulation,
+  title={DRAWER: Digital Reconstruction and Articulation With Environment Realism}, 
+  author={Hongchi Xia and Entong Su and Marius Memmel and Arhan Jain and Raymond Yu and Numfor Mbiziwo-Tiapo and Ali Farhadi and Abhishek Gupta and Shenlong Wang and Wei-Chiu Ma},
+  year={2025},
+  eprint={2504.15278},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2504.15278}, 
+} -->
+        </div>
       </div>
     </div>
+
+
+
   </div>
 </body>
 
