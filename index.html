@@ -246,6 +246,470 @@
       </div>
     </div>
 
+    <!-- Result visualization -->
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <h3>
+          Watch our 3D Textured Object Visualization Here! (Click Load to start the visualization!)
+        </h3>
+        <div class="text-justify">
+          Interactive 3D viewer for reconstructed objects. Drag to rotate, scroll to zoom, and toggle object visibility below.
+        </div>
+      </div>
+    </div>
+
+    <!-- 3D Viewer Container -->
+    <div class="row">
+      <div class="col-md-10 col-md-offset-1">
+        <!-- Scene Selector -->
+        <div id="scene-selector" style="margin-top: 20px;">
+          <div style="margin-bottom: 10px; font-weight: bold; font-size: 16px; text-align: center;">Select Scene:</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 20px;">
+            <div id="scene-buttons" style="display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 10px; flex: 1;">
+              <!-- Scene buttons will be dynamically generated here -->
+            </div>
+            <button id="load-scene-btn" style="
+              padding: 10px 30px;
+              background-color: #4CAF50;
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 16px;
+              font-weight: bold;
+              transition: all 0.3s;
+              white-space: nowrap;
+            ">Load</button>
+          </div>
+        </div>
+        
+        <div id="obj-viewer-container" style="width: 100%; height: 600px; background-color: #1a1a1a; border-radius: 8px; position: relative;">
+          <div id="obj-viewer-canvas"></div>
+          <div id="loading-indicator" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 18px; display: none;">
+            Loading models...
+          </div>
+        </div>
+        
+        <!-- Visibility Controls -->
+        <div id="visibility-controls" style="margin-top: 20px; text-align: center;">
+          <div style="margin-bottom: 10px; font-weight: bold;">Object Visibility Controls:</div>
+          <div id="visibility-buttons" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;">
+            <!-- Buttons will be dynamically generated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Three.js and OBJLoader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/MTLLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+      // 3D OBJ Viewer Implementation
+      (function() {
+        // List of scenes with their names and URLs
+        const SCENES = [
+          {
+            name: 'Replica',
+            url: 'https://huggingface.co/datasets/hongchi/HoloScene/resolve/main/replica_room_0'
+          },
+          {
+            name: 'ScanNet++',
+            url: 'https://huggingface.co/datasets/hongchi/HoloScene/resolve/main/scannetpp_67d'
+          },
+          {
+            name: 'iGibson',
+            url: 'https://huggingface.co/datasets/hongchi/HoloScene/resolve/main/gibson_beechwood_0'
+          },
+          {
+            name: 'UIUC Siebel Game Room',
+            url: 'https://huggingface.co/datasets/hongchi/HoloScene/resolve/main/uiuc_siebel_game_room'
+          }
+        ];
+        
+        const MAX_OBJECTS = 100; // Maximum number of objects to try loading
+        
+        let scene, camera, renderer, controls;
+        let loadedObjects = [];
+        let objectMeshes = new Map(); // Map of index to mesh group
+        let currentSceneIndex = 0;
+        
+        function init3DViewer() {
+          const container = document.getElementById('obj-viewer-canvas');
+          const loadingIndicator = document.getElementById('loading-indicator');
+          
+          // Set up axis to +Z (default is +Y)
+          THREE.Object3D.DefaultUp.set(0, 0, 1);
+          
+          // Scene setup
+          scene = new THREE.Scene();
+          scene.background = new THREE.Color(0x1a1a1a);
+          
+          // Camera setup
+          const width = container.parentElement.clientWidth;
+          const height = container.parentElement.clientHeight;
+          camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+          camera.position.set(0.5, 0.5, 0.4);
+          camera.up.set(0, 0, 1); // Set camera up vector to +Z
+          
+          // Renderer setup
+          renderer = new THREE.WebGLRenderer({ antialias: true });
+          renderer.setSize(width, height);
+          renderer.shadowMap.enabled = true;
+          container.appendChild(renderer.domElement);
+          
+          // Orbit controls
+          controls = new THREE.OrbitControls(camera, renderer.domElement);
+          controls.enableDamping = true;
+          controls.dampingFactor = 0.05;
+          controls.screenSpacePanning = false;
+          controls.minDistance = 0.1;
+          controls.maxDistance = 200;
+          controls.target.set(0, 0, 0);
+          
+          // Lighting
+          const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+          scene.add(ambientLight);
+          
+          const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.8);
+          directionalLight1.position.set(5, 5, 10);
+          directionalLight1.castShadow = true;
+          scene.add(directionalLight1);
+          
+          const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+          directionalLight2.position.set(-5, -5, 5);
+          scene.add(directionalLight2);
+          
+          const directionalLight3 = new THREE.DirectionalLight(0xffffff, 0.3);
+          directionalLight3.position.set(0, 0, -10);
+          scene.add(directionalLight3);
+          
+          // Grid helper on XY plane (since Z is up)
+          const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x222222);
+          gridHelper.rotation.x = Math.PI / 2; // Rotate to XY plane
+          scene.add(gridHelper);
+          
+          // Add axes helper to visualize orientation
+          const axesHelper = new THREE.AxesHelper(2);
+          scene.add(axesHelper);
+          
+          // Handle window resize
+          window.addEventListener('resize', onWindowResize, false);
+          
+          // Start animation loop
+          animate();
+          
+          // Create scene selector buttons
+          createSceneButtons();
+          
+          // Set up Load button
+          setupLoadButton();
+          
+          // Don't load automatically - wait for user to click Load button
+        }
+        
+        function onWindowResize() {
+          const container = document.getElementById('obj-viewer-canvas');
+          const width = container.parentElement.clientWidth;
+          const height = container.parentElement.clientHeight;
+          
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height);
+        }
+        
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        
+        function createSceneButtons() {
+          const sceneButtonsContainer = document.getElementById('scene-buttons');
+          sceneButtonsContainer.innerHTML = ''; // Clear existing buttons
+          
+          SCENES.forEach((sceneInfo, index) => {
+            const button = document.createElement('button');
+            button.textContent = sceneInfo.name;
+            button.id = `scene-btn-${index}`;
+            
+            const isActive = (index === currentSceneIndex);
+            const activeColor = isActive ? '#2196F3' : '#757575';
+            
+            button.style.cssText = `
+              padding: 10px 20px;
+              background-color: ${activeColor};
+              color: white;
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+              font-size: 16px;
+              font-weight: bold;
+              transition: all 0.3s;
+            `;
+            
+            button.addEventListener('click', function() {
+              selectScene(index);
+            });
+            
+            button.addEventListener('mouseenter', function() {
+              if (index !== currentSceneIndex) {
+                this.style.backgroundColor = '#9E9E9E';
+              }
+            });
+            
+            button.addEventListener('mouseleave', function() {
+              if (index !== currentSceneIndex) {
+                this.style.backgroundColor = '#757575';
+              }
+            });
+            
+            sceneButtonsContainer.appendChild(button);
+          });
+        }
+        
+        function setupLoadButton() {
+          const loadButton = document.getElementById('load-scene-btn');
+          
+          loadButton.addEventListener('click', function() {
+            loadScene(currentSceneIndex);
+          });
+          
+          loadButton.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#45a049';
+          });
+          
+          loadButton.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '#4CAF50';
+          });
+        }
+        
+        function selectScene(sceneIndex) {
+          currentSceneIndex = sceneIndex;
+          
+          // Update scene button styles
+          SCENES.forEach((_, index) => {
+            const button = document.getElementById(`scene-btn-${index}`);
+            if (button) {
+              button.style.backgroundColor = (index === sceneIndex) ? '#2196F3' : '#757575';
+            }
+          });
+        }
+        
+        function loadScene(sceneIndex) {
+          // Clear existing objects
+          clearScene();
+          
+          // Load new scene
+          loadOBJFiles(SCENES[sceneIndex].url);
+        }
+        
+        function clearScene() {
+          // Remove all loaded objects from the scene
+          loadedObjects.forEach(obj => {
+            scene.remove(obj.object);
+          });
+          
+          // Clear arrays and maps
+          loadedObjects = [];
+          objectMeshes.clear();
+          
+          // Clear visibility buttons
+          const buttonsContainer = document.getElementById('visibility-buttons');
+          buttonsContainer.innerHTML = '';
+        }
+        
+        function loadOBJFiles(objFolder) {
+          const loadingIndicator = document.getElementById('loading-indicator');
+          loadingIndicator.style.display = 'block';
+          
+          const objLoader = new THREE.OBJLoader();
+          const mtlLoader = new THREE.MTLLoader();
+          let loadedCount = 0;
+          let errorCount = 0;
+          
+          // Try to load objects sequentially
+          function loadNextObject(index) {
+            if (index >= MAX_OBJECTS || errorCount > 5) {
+              // Stop if we've tried too many or had too many consecutive errors
+              loadingIndicator.style.display = 'none';
+              if (loadedCount === 0) {
+                loadingIndicator.textContent = 'No models found. Please check the folder path.';
+                loadingIndicator.style.display = 'block';
+              }
+              return;
+            }
+            
+            const objPath = `${objFolder}/surface_${index}.obj`;
+            const mtlPath = `${objFolder}/surface_${index}.mtl`;
+            
+            // Try to load MTL file first
+            mtlLoader.load(
+              mtlPath,
+              function(materials) {
+                // MTL file exists, use it
+                materials.preload();
+                objLoader.setMaterials(materials);
+                loadOBJWithMaterials(index, objPath, true);
+              },
+              undefined,
+              function(error) {
+                // MTL doesn't exist, load OBJ without materials
+                loadOBJWithMaterials(index, objPath, false);
+              }
+            );
+          }
+          
+          function loadOBJWithMaterials(index, objPath, hasMTL) {
+            objLoader.load(
+              objPath,
+              function(object) {
+                // Success - reset error count
+                errorCount = 0;
+                loadedCount++;
+                
+                // Apply material to all meshes in the object
+                object.traverse(function(child) {
+                  if (child instanceof THREE.Mesh) {
+                    // Check if the geometry has vertex colors
+                    const hasVertexColors = child.geometry.attributes.color !== undefined;
+                    
+                    if (!hasMTL) {
+                      // No MTL file, create material based on vertex colors or random color
+                      if (hasVertexColors) {
+                        child.material = new THREE.MeshPhongMaterial({
+                          vertexColors: true,
+                          flatShading: false,
+                          side: THREE.DoubleSide
+                        });
+                      } else {
+                        // Create a random color for each object
+                        const color = new THREE.Color();
+                        color.setHSL(Math.random(), 0.7, 0.6);
+                        
+                        child.material = new THREE.MeshPhongMaterial({
+                          color: color,
+                          flatShading: false,
+                          side: THREE.DoubleSide
+                        });
+                      }
+                    } else {
+                      // Has MTL, but ensure vertex colors are enabled if present
+                      if (hasVertexColors && child.material) {
+                        child.material.vertexColors = true;
+                        child.material.needsUpdate = true;
+                      }
+                    }
+                    
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                  }
+                });
+                
+                // Store the object
+                objectMeshes.set(index, object);
+                scene.add(object);
+                
+                // All objects visible by default
+                const isVisible = true;
+                object.visible = isVisible;
+                loadedObjects.push({ index: index, object: object, visible: isVisible });
+                
+                // Update loading indicator
+                loadingIndicator.textContent = `Loading models... (${loadedCount} loaded)`;
+                
+                // Create visibility button
+                createVisibilityButton(index, isVisible);
+                
+                // Load next object
+                loadNextObject(index + 1);
+              },
+              function(xhr) {
+                // Progress callback (optional)
+              },
+              function(error) {
+                // Error callback - file doesn't exist or can't be loaded
+                errorCount++;
+                // Try next object
+                loadNextObject(index + 1);
+              }
+            );
+          }
+          
+          // Start loading from index 0
+          loadNextObject(0);
+        }
+        
+        function createVisibilityButton(index, isVisible) {
+          const buttonsContainer = document.getElementById('visibility-buttons');
+          
+          const button = document.createElement('button');
+          button.textContent = `Object ${index}`;
+          button.id = `obj-btn-${index}`;
+          
+          // Set initial color based on visibility
+          const initialColor = isVisible ? '#4CAF50' : '#f44336';
+          button.style.cssText = `
+            padding: 8px 16px;
+            background-color: ${initialColor};
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+          `;
+          
+          button.addEventListener('click', function() {
+            toggleObjectVisibility(index);
+          });
+          
+          button.addEventListener('mouseenter', function() {
+            if (this.style.backgroundColor === 'rgb(76, 175, 80)') { // Green
+              this.style.backgroundColor = '#45a049';
+            } else {
+              this.style.backgroundColor = '#c62828';
+            }
+          });
+          
+          button.addEventListener('mouseleave', function() {
+            const obj = loadedObjects.find(o => o.index === index);
+            if (obj && obj.visible) {
+              this.style.backgroundColor = '#4CAF50';
+            } else {
+              this.style.backgroundColor = '#f44336';
+            }
+          });
+          
+          buttonsContainer.appendChild(button);
+        }
+        
+        function toggleObjectVisibility(index) {
+          const obj = loadedObjects.find(o => o.index === index);
+          if (obj) {
+            obj.visible = !obj.visible;
+            obj.object.visible = obj.visible;
+            
+            // Update button style
+            const button = document.getElementById(`obj-btn-${index}`);
+            if (obj.visible) {
+              button.style.backgroundColor = '#4CAF50'; // Green
+            } else {
+              button.style.backgroundColor = '#f44336'; // Red
+            }
+          }
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', init3DViewer);
+        } else {
+          init3DViewer();
+        }
+      })();
+    </script>
 
 
     <div class="row">
@@ -268,11 +732,6 @@
       </video>
     </div>
 
-
-
-
-
-    
 
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
@@ -348,9 +807,6 @@
         </div>
       </div>
     </div>
-
-    
-
 
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
@@ -635,12 +1091,6 @@
 
 
     </div>
-    
-
-    
-
-    
-
 
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
