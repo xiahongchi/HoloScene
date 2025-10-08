@@ -73,8 +73,9 @@ cd ..
 # Download Omnidata normal estimation model
 wget "https://zenodo.org/records/10447888/files/omnidata_dpt_normal_v2.ckpt"
 
-# Set environment variables
-export CPATH=$CPATH:/home/hongchix/mount/holoscene/src/tiny-cuda-nn-include:$CONDA_PREFIX/include
+# Set environment variables (if export gaussian splat usd needed)
+git clone https://github.com/NVlabs/tiny-cuda-nn.git
+export CPATH=$CPATH:./tiny-cuda-nn/include:$CONDA_PREFIX/include
 ```
 
 ## Data
