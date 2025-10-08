@@ -5,7 +5,7 @@
 </h2>
 
 <p align="center">
-    <a href='#'>
+    <a href='https://arxiv.org/abs/2510.05560'>
       <img src='https://img.shields.io/badge/Paper-arXiv-red?style=plastic&logo=adobeacrobatreader&logoColor=red' alt='Paper arXiv'>
     </a>
     <a href='https://xiahongchi.github.io/HoloScene/'>
@@ -169,10 +169,13 @@ for their foundational work and open-source contributions.
 ## Citation
 
 ```bibtex
-@inproceedings{xia2025holoscene,
-  title={HoloScene: Simulation-Ready Interactive 3D Worlds from a Single Video}, 
-  author={Hongchi Xia and Chih-Hao Lin and Hao-Yu Hsu and Quentin Leboutet and Katelyn Gao and Michael Paulitsch and Benjamin Ummenhofer and Shenlong Wang},
-  booktitle={Advances in Neural Information Processing Systems},
-  year={2025}
+@misc{xia2025holoscene,
+      title={HoloScene: Simulation-Ready Interactive 3D Worlds from a Single Video}, 
+      author={Hongchi Xia and Chih-Hao Lin and Hao-Yu Hsu and Quentin Leboutet and Katelyn Gao and Michael Paulitsch and Benjamin Ummenhofer and Shenlong Wang},
+      year={2025},
+      eprint={2510.05560},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2510.05560}, 
 }
 ```
